@@ -1,8 +1,12 @@
-import React from 'react';
-import { AlertTriangle, CheckCircle, XCircle, TrendingUp, TrendingDown, Info } from 'lucide-react';
+import React, { useState } from 'react';
+import { AlertTriangle, CheckCircle, XCircle, TrendingUp, TrendingDown, Info, BarChart3, Target, Waves } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import SHAPWaterfallPlot from './SHAPWaterfallPlot';
+import SHAPForcePlot from './SHAPForcePlot';
 
 const PredictionResult = ({ result }) => {
+  const [activeVisualization, setActiveVisualization] = useState('bar');
+  
   if (!result) return null;
 
   const getRiskColor = (riskLevel) => {
@@ -139,63 +143,139 @@ const PredictionResult = ({ result }) => {
       {/* SHAP Explanations */}
       {result.shap_explanations && (
         <div className="card">
-          <h3 className="text-xl font-bold mb-4 flex items-center">
-            <TrendingUp className="mr-2 text-primary-600" />
-            AI Model Explanations (SHAP Values)
-          </h3>
-          <p className="text-gray-600 mb-6">
-            This chart shows how each patient factor influences the prediction. 
-            Positive values increase survival probability, negative values increase mortality risk.
-          </p>
-          
-          <ResponsiveContainer width="100%" height={400}>
-            <BarChart
-              data={shapData}
-              margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="feature" 
-                angle={-45}
-                textAnchor="end"
-                height={100}
-                fontSize={12}
-              />
-              <YAxis />
-              <Tooltip 
-                formatter={(value, name, props) => [
-                  `${value.toFixed(4)}`,
-                  'SHAP Value'
-                ]}
-                labelFormatter={(label) => `${formatFeatureName(label)}`}
-                content={({ active, payload, label }) => {
-                  if (active && payload && payload.length) {
-                    const data = payload[0].payload;
-                    return (
-                      <div className="bg-white p-3 border rounded-lg shadow-lg">
-                        <p className="font-semibold">{formatFeatureName(label)}</p>
-                        <p className="text-sm">Patient Value: {data.patientValue}</p>
-                        <p className="text-sm">SHAP Value: {data.value.toFixed(4)}</p>
-                        <p className={`text-sm font-medium ${data.value > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {data.value > 0 ? 'Increases Survival' : 'Increases Risk'}
-                        </p>
-                      </div>
-                    );
-                  }
-                  return null;
-                }}
-              />
-              <Bar 
-                dataKey="value" 
-                fill={(entry) => entry.value > 0 ? '#22c55e' : '#ef4444'}
-                name="SHAP Value"
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-bold flex items-center">
+              <TrendingUp className="mr-2 text-primary-600" />
+              AI Model Explanations (SHAP Values)
+            </h3>
+            
+            {/* Visualization Toggle */}
+            <div className="flex bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setActiveVisualization('bar')}
+                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                  activeVisualization === 'bar' 
+                    ? 'bg-white text-blue-600 shadow-sm' 
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
               >
-                {shapData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.value > 0 ? '#22c55e' : '#ef4444'} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+                <BarChart3 className="w-4 h-4 inline mr-1" />
+                Bar Chart
+              </button>
+              <button
+                onClick={() => setActiveVisualization('waterfall')}
+                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                  activeVisualization === 'waterfall' 
+                    ? 'bg-white text-blue-600 shadow-sm' 
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                <Waves className="w-4 h-4 inline mr-1" />
+                Waterfall
+              </button>
+              <button
+                onClick={() => setActiveVisualization('force')}
+                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                  activeVisualization === 'force' 
+                    ? 'bg-white text-blue-600 shadow-sm' 
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                <Target className="w-4 h-4 inline mr-1" />
+                Force Plot
+              </button>
+            </div>
+          </div>
+          
+          {/* Visualization Description */}
+          <div className="mb-6">
+            {activeVisualization === 'bar' && (
+              <p className="text-gray-600 text-sm">
+                This bar chart shows how each patient factor influences the prediction. 
+                Positive values increase survival probability, negative values increase mortality risk.
+              </p>
+            )}
+            {activeVisualization === 'waterfall' && (
+              <p className="text-gray-600 text-sm">
+                The waterfall chart shows step-by-step how we get from the base survival rate to the final prediction,
+                with each feature adding or subtracting probability.
+              </p>
+            )}
+            {activeVisualization === 'force' && (
+              <p className="text-gray-600 text-sm">
+                The force plot visualizes the "tug-of-war" between features pushing toward survival versus mortality,
+                showing the balance of forces that determine the final prediction.
+              </p>
+            )}
+          </div>
+          
+          {/* Dynamic Visualization Content */}
+          {activeVisualization === 'bar' && (
+            <ResponsiveContainer width="100%" height={400}>
+              <BarChart
+                data={shapData}
+                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="feature" 
+                  angle={-45}
+                  textAnchor="end"
+                  height={100}
+                  fontSize={12}
+                />
+                <YAxis />
+                <Tooltip 
+                  formatter={(value, name, props) => [
+                    `${value.toFixed(4)}`,
+                    'SHAP Value'
+                  ]}
+                  labelFormatter={(label) => `${formatFeatureName(label)}`}
+                  content={({ active, payload, label }) => {
+                    if (active && payload && payload.length) {
+                      const data = payload[0].payload;
+                      return (
+                        <div className="bg-white p-3 border rounded-lg shadow-lg">
+                          <p className="font-semibold">{formatFeatureName(label)}</p>
+                          <p className="text-sm">Patient Value: {data.patientValue}</p>
+                          <p className="text-sm">SHAP Value: {data.value.toFixed(4)}</p>
+                          <p className={`text-sm font-medium ${data.value > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {data.value > 0 ? 'Increases Survival' : 'Increases Risk'}
+                          </p>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                />
+                <Bar 
+                  dataKey="value" 
+                  fill={(entry) => entry.value > 0 ? '#22c55e' : '#ef4444'}
+                  name="SHAP Value"
+                >
+                  {shapData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.value > 0 ? '#22c55e' : '#ef4444'} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+
+          {activeVisualization === 'waterfall' && (
+            <SHAPWaterfallPlot 
+              shapData={shapData}
+              baseProbability={0.5} // You can make this dynamic based on your model's base rate
+              finalProbability={result.survival_probability}
+            />
+          )}
+
+          {activeVisualization === 'force' && (
+            <SHAPForcePlot 
+              shapData={shapData}
+              baseProbability={0.5} // You can make this dynamic based on your model's base rate
+              finalProbability={result.survival_probability}
+            />
+          )}
 
           <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="p-4 bg-green-50 rounded-lg border border-green-200">

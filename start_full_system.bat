@@ -1,8 +1,20 @@
 @echo off
-echo Starting Sepsis Prediction System...
+echo Starting Enhanced Sepsis Prediction System...
 echo.
 
-echo Installing frontend dependencies...
+echo Checking system requirements...
+if not exist "M\enhanced_processed_dataset.csv" (
+    if not exist "M\optimized_xgboost_sepsis_model.pkl" (
+        if not exist "M\xgboost_sepsis_model.pkl" (
+            echo ERROR: No model files found!
+            echo Please run the preprocessing and training pipeline first.
+            pause
+            exit /b 1
+        )
+    )
+)
+
+echo Installing enhanced React frontend dependencies...
 cd frontend
 call npm install
 if %errorlevel% neq 0 (
@@ -12,24 +24,35 @@ if %errorlevel% neq 0 (
 )
 
 echo.
-echo Starting backend API server...
+echo Starting Enhanced API server...
 cd ..\M
-start "Sepsis API Server" cmd /k "uvicorn sepsis_api_FastAPI:app --host 0.0.0.0 --port 8000 --reload"
+start "Enhanced Sepsis API" cmd /k "python Production_Sepsis_API.py"
 
 echo.
-echo Waiting for API server to start...
-timeout /t 5 /nobreak > nul
+echo Waiting for Enhanced API server to start...
+timeout /t 8 /nobreak > nul
 
 echo.
-echo Starting React frontend...
+echo Starting Enhanced React Frontend...
 cd ..\frontend
-start "React Frontend" cmd /k "npm start"
+start "Enhanced React Frontend" cmd /k "npm start"
 
 echo.
-echo System is starting up...
-echo Backend API: http://localhost:8000
-echo Frontend: http://localhost:3000
-echo API Docs: http://localhost:8000/docs
+echo Enhanced System is starting up...
+echo ================================
+echo Enhanced Backend API: http://localhost:8000
+echo Enhanced Dashboard: http://localhost:3000
+echo API Documentation: http://localhost:8000/docs
+echo Health Check: http://localhost:8000/health
+echo Model Info: http://localhost:8000/model_info
+echo.
+echo Enhanced Features:
+echo - 40+ clinical parameters support
+echo - Real-time clinical alerts
+echo - Advanced SHAP explanations  
+echo - Batch patient analysis
+echo - Enhanced preprocessing integration
+echo - Clinical recommendations
 echo.
 echo Press any key to exit...
 pause > nul

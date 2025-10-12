@@ -17,19 +17,28 @@ const FeatureImportance = () => {
     setError(null);
     try {
       const data = await sepsisAPI.getFeatureImportance();
+      console.log('Feature importance API response:', data);
       
-      // Transform data for chart
-      const chartData = Object.entries(data.feature_importance)
-        .map(([feature, value]) => ({
-          feature: formatFeatureName(feature),
-          importance: value,
-          percentage: (value * 100).toFixed(1)
+      // Validate API response structure
+      if (!data || !data.feature_importance || !Array.isArray(data.feature_importance)) {
+        throw new Error('Invalid API response format');
+      }
+      
+      // Transform data for chart - API returns array format
+      const chartData = data.feature_importance
+        .map((item) => ({
+          feature: formatFeatureName(item.feature),
+          originalFeature: item.feature,
+          importance: item.importance,
+          percentage: (item.importance * 100).toFixed(1),
+          description: item.description
         }))
         .sort((a, b) => b.importance - a.importance);
       
+      console.log('Transformed chart data:', chartData);
       setImportance(chartData);
     } catch (err) {
-      setError('Failed to load feature importance data');
+      setError(`Failed to load feature importance data: ${err.message}`);
       console.error('Error fetching feature importance:', err);
     } finally {
       setLoading(false);
@@ -38,32 +47,32 @@ const FeatureImportance = () => {
 
   const formatFeatureName = (name) => {
     const nameMap = {
-      'age': 'Age',
-      'gender': 'Gender',
-      'heart_rate': 'Heart Rate',
-      'systolic_bp': 'Systolic BP',
-      'temperature': 'Temperature',
-      'respiratory_rate': 'Respiratory Rate',
-      'wbc_count': 'WBC Count',
-      'lactate': 'Lactate',
-      'sofa_score': 'SOFA Score'
+      'Age': 'Age',
+      'Gender': 'Gender', 
+      'HR': 'Heart Rate',
+      'SBP': 'Systolic BP',
+      'DBP': 'Diastolic BP',
+      'Temp': 'Temperature',
+      'Resp': 'Respiratory Rate',
+      'O2Sat': 'Oxygen Saturation',
+      'MAP': 'Mean Arterial Pressure',
+      'Glucose': 'Blood Glucose',
+      'ICULOS': 'ICU Length of Stay',
+      'HR_abnormal': 'HR Abnormal Flag',
+      'Temp_abnormal': 'Temperature Abnormal Flag',
+      'Age_elderly': 'Elderly Age Flag',
+      'Age_category': 'Age Category',
+      'ICULOS_long': 'Long ICU Stay Flag',
+      'Temp_missing': 'Temperature Missing Flag',
+      'Glucose_missing': 'Glucose Missing Flag',
+      'HR_SBP_ratio': 'HR/SBP Ratio'
     };
     return nameMap[name] || name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
-  const getFeatureDescription = (feature) => {
-    const descriptions = {
-      'Age': 'Patient age in years - older patients typically have higher sepsis risk',
-      'Gender': 'Patient gender - may influence sepsis outcomes',
-      'Heart Rate': 'Heart rate in beats per minute - tachycardia is a sepsis indicator',
-      'Systolic BP': 'Systolic blood pressure - hypotension indicates severe sepsis',
-      'Temperature': 'Body temperature - fever or hypothermia can indicate sepsis',
-      'Respiratory Rate': 'Breathing rate - tachypnea is an early sepsis sign',
-      'WBC Count': 'White blood cell count - elevated or low counts suggest infection',
-      'Lactate': 'Blood lactate level - elevated lactate indicates tissue hypoperfusion',
-      'SOFA Score': 'Sequential Organ Failure Assessment - measures organ dysfunction'
-    };
-    return descriptions[feature] || 'Clinical parameter used in sepsis prediction';
+  const getFeatureDescription = (item) => {
+    // Use API-provided description if available, otherwise use formatted feature name
+    return item.description || `Clinical parameter: ${item.originalFeature}`;
   };
 
   if (loading) {
@@ -84,12 +93,22 @@ const FeatureImportance = () => {
           <div className="text-red-500 mb-2">
             <Info className="w-8 h-8 mx-auto" />
           </div>
-          <p className="text-red-600">{error}</p>
+          <h3 className="text-lg font-semibold text-red-600 mb-2">Feature Importance Error</h3>
+          <p className="text-red-600 mb-4">{error}</p>
+          <div className="text-sm text-gray-600 mb-4">
+            <p>Possible causes:</p>
+            <ul className="list-disc list-inside mt-2">
+              <li>API server not running on http://localhost:8000</li>
+              <li>Model not loaded properly</li>
+              <li>Network connectivity issues</li>
+            </ul>
+          </div>
           <button 
             onClick={fetchFeatureImportance}
             className="btn-primary mt-4"
+            disabled={loading}
           >
-            Retry
+            {loading ? 'Retrying...' : 'Retry'}
           </button>
         </div>
       </div>
@@ -117,33 +136,47 @@ const FeatureImportance = () => {
         Higher values indicate features that have more influence on the model's decisions.
       </p>
 
-      {importance && (
+      {importance && importance.length > 0 ? (
         <>
-          <div className="mb-6">
+          <div className="mb-6 bg-white border rounded-lg p-4">
+            <h4 className="text-lg font-semibold mb-4 text-center">Feature Importance Distribution</h4>
+            <div className="text-sm text-gray-600 text-center mb-4">
+              Showing {importance.length} features ranked by importance to the AI model
+            </div>
             <ResponsiveContainer width="100%" height={400}>
               <BarChart
                 data={importance}
-                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                margin={{ top: 20, right: 30, left: 20, bottom: 100 }}
               >
-                <CartesianGrid strokeDasharray="3 3" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis 
                   dataKey="feature" 
                   angle={-45}
                   textAnchor="end"
                   height={100}
-                  fontSize={12}
+                  fontSize={11}
+                  interval={0}
                 />
                 <YAxis 
-                  label={{ value: 'Importance', angle: -90, position: 'insideLeft' }}
+                  label={{ value: 'Importance Score', angle: -90, position: 'insideLeft' }}
+                  fontSize={11}
                 />
                 <Tooltip 
                   formatter={(value) => [`${(value * 100).toFixed(1)}%`, 'Importance']}
                   labelFormatter={(label) => `Feature: ${label}`}
+                  contentStyle={{
+                    backgroundColor: 'white',
+                    border: '1px solid #ccc',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                  }}
                 />
                 <Bar 
                   dataKey="importance" 
                   fill="#3b82f6"
                   radius={[4, 4, 0, 0]}
+                  stroke="#2563eb"
+                  strokeWidth={1}
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -168,10 +201,30 @@ const FeatureImportance = () => {
                   ></div>
                 </div>
                 <p className="text-xs text-gray-600">
-                  {getFeatureDescription(item.feature)}
+                  {getFeatureDescription(item)}
                 </p>
               </div>
             ))}
+          </div>
+
+          {/* Summary Statistics */}
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-center">
+              <div className="text-2xl font-bold text-green-700">{importance.length}</div>
+              <div className="text-sm text-green-600">Total Features</div>
+            </div>
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-center">
+              <div className="text-2xl font-bold text-blue-700">
+                {importance.slice(0, 5).reduce((sum, item) => sum + item.importance, 0).toFixed(3)}
+              </div>
+              <div className="text-sm text-blue-600">Top 5 Combined Importance</div>
+            </div>
+            <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg text-center">
+              <div className="text-2xl font-bold text-purple-700">
+                {importance[0]?.percentage || '0'}%
+              </div>
+              <div className="text-sm text-purple-600">Highest Single Feature</div>
+            </div>
           </div>
 
           <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -181,9 +234,33 @@ const FeatureImportance = () => {
               <li>• The model uses all features together to make final predictions</li>
               <li>• Feature importance is calculated using the XGBoost algorithm's built-in method</li>
               <li>• These values represent global importance across all training data</li>
+              <li>• Missing value flags and engineered features may have high importance</li>
             </ul>
           </div>
         </>
+      ) : (
+        !loading && !error && (
+          <div className="text-center py-8">
+            <div className="text-gray-400 mb-4">
+              <TrendingUp className="w-12 h-12 mx-auto" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-600 mb-2">No Feature Importance Data</h3>
+            <p className="text-gray-500 mb-4">
+              Feature importance data is not available. This could be because:
+            </p>
+            <ul className="text-sm text-gray-500 list-disc list-inside mb-4">
+              <li>The model doesn't support feature importance</li>
+              <li>The data hasn't loaded yet</li>
+              <li>There was an error loading the data</li>
+            </ul>
+            <button 
+              onClick={fetchFeatureImportance}
+              className="btn-primary"
+            >
+              Try Loading Data
+            </button>
+          </div>
+        )
       )}
     </div>
   );

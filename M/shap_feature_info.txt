@@ -1,0 +1,1 @@
+Model features: 19\nFeature names: 19\n\nFeature list:\n 0: HR\n 1: O2Sat\n 2: Temp\n 3: SBP\n 4: MAP\n 5: DBP\n 6: Resp\n 7: Glucose\n 8: Age\n 9: Gender\n10: ICULOS\n11: HR_SBP_ratio\n12: Temp_abnormal\n13: HR_abnormal\n14: Age_elderly\n15: Age_category\n16: ICULOS_long\n17: Temp_missing\n18: Glucose_missing\n

@@ -9,6 +9,9 @@ const PredictionResult = ({ result }) => {
   
   if (!result) return null;
 
+  // Handle both old and new API response formats
+  const isEnhancedResponse = result.clinical_alerts || result.recommendations;
+
   const getRiskColor = (riskLevel) => {
     switch (riskLevel) {
       case 'low': return 'text-green-600 bg-green-50 border-green-200';
@@ -309,61 +312,148 @@ const PredictionResult = ({ result }) => {
         </div>
       )}
 
-      {/* Clinical Recommendations */}
+      {/* Enhanced Clinical Alerts */}
+      {isEnhancedResponse && result.clinical_alerts && result.clinical_alerts.length > 0 && (
+        <div className="card">
+          <h3 className="text-xl font-bold mb-4 flex items-center">
+            <AlertTriangle className="mr-2 text-red-500" />
+            Clinical Alerts
+          </h3>
+          <div className="space-y-2">
+            {result.clinical_alerts.map((alert, index) => {
+              const isCritical = alert.includes('🔴') || alert.includes('🚨');
+              const isModerate = alert.includes('🟡') || alert.includes('⚠️');
+              
+              return (
+                <div 
+                  key={index}
+                  className={`p-3 rounded-lg border ${
+                    isCritical ? 'bg-red-50 border-red-200 text-red-800' :
+                    isModerate ? 'bg-yellow-50 border-yellow-200 text-yellow-800' :
+                    'bg-blue-50 border-blue-200 text-blue-800'
+                  }`}
+                >
+                  <div className="flex items-start">
+                    {isCritical ? <XCircle className="w-4 h-4 mt-0.5 mr-2 flex-shrink-0" /> :
+                     isModerate ? <AlertTriangle className="w-4 h-4 mt-0.5 mr-2 flex-shrink-0" /> :
+                     <Info className="w-4 h-4 mt-0.5 mr-2 flex-shrink-0" />}
+                    <span className="text-sm">{alert.replace(/🔴|🟡|🚨|⚠️/g, '').trim()}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Enhanced Clinical Recommendations */}
       <div className="card">
         <h3 className="text-xl font-bold mb-4 flex items-center">
-          <AlertTriangle className="mr-2 text-orange-500" />
+          <CheckCircle className="mr-2 text-green-500" />
           Clinical Recommendations
         </h3>
-        <div className="space-y-3">
-          {result.risk_level === 'critical' && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-              <h4 className="font-semibold text-red-800 mb-2">Critical Risk - Immediate Action Required</h4>
-              <ul className="text-red-700 text-sm space-y-1">
-                <li>• Consider ICU admission</li>
-                <li>• Initiate sepsis protocol immediately</li>
-                <li>• Frequent vital sign monitoring</li>
-                <li>• Consider vasopressor support</li>
-              </ul>
+        
+        {/* Enhanced API Recommendations */}
+        {isEnhancedResponse && result.recommendations && result.recommendations.length > 0 ? (
+          <div className="space-y-2">
+            {result.recommendations.map((recommendation, index) => (
+              <div key={index} className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-start">
+                  <CheckCircle className="w-4 h-4 mt-0.5 mr-2 text-green-600 flex-shrink-0" />
+                  <span className="text-sm text-green-800">{recommendation}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          /* Fallback recommendations based on risk level */
+          <div className="space-y-3">
+            {result.risk_level === 'critical' && (
+              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                <h4 className="font-semibold text-red-800 mb-2">Critical Risk - Immediate Action Required</h4>
+                <ul className="text-red-700 text-sm space-y-1">
+                  <li>• Consider ICU admission</li>
+                  <li>• Initiate sepsis protocol immediately</li>
+                  <li>• Frequent vital sign monitoring</li>
+                  <li>• Consider vasopressor support</li>
+                </ul>
+              </div>
+            )}
+            
+            {result.risk_level === 'high' && (
+              <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                <h4 className="font-semibold text-orange-800 mb-2">High Risk - Close Monitoring</h4>
+                <ul className="text-orange-700 text-sm space-y-1">
+                  <li>• Enhanced monitoring protocols</li>
+                  <li>• Consider early intervention</li>
+                  <li>• Regular reassessment</li>
+                  <li>• Prepare for potential escalation</li>
+                </ul>
+              </div>
+            )}
+            
+            {result.risk_level === 'moderate' && (
+              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <h4 className="font-semibold text-yellow-800 mb-2">Moderate Risk - Standard Care</h4>
+                <ul className="text-yellow-700 text-sm space-y-1">
+                  <li>• Continue standard monitoring</li>
+                  <li>• Regular vital sign checks</li>
+                  <li>• Monitor for deterioration</li>
+                  <li>• Follow institutional protocols</li>
+                </ul>
+              </div>
+            )}
+            
+            {result.risk_level === 'low' && (
+              <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                <h4 className="font-semibold text-green-800 mb-2">Low Risk - Routine Care</h4>
+                <ul className="text-green-700 text-sm space-y-1">
+                  <li>• Routine monitoring sufficient</li>
+                  <li>• Standard care protocols</li>
+                  <li>• Continue current treatment</li>
+                  <li>• Regular reassessment as scheduled</li>
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+        
+        {/* Enhanced API Metadata */}
+        {isEnhancedResponse && (
+          <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              {result.patient_id && (
+                <div>
+                  <span className="font-medium text-gray-600">Patient ID:</span>
+                  <div className="text-gray-800">{result.patient_id}</div>
+                </div>
+              )}
+              {result.confidence && (
+                <div>
+                  <span className="font-medium text-gray-600">Confidence:</span>
+                  <div className="text-gray-800">{(result.confidence * 100).toFixed(1)}%</div>
+                </div>
+              )}
+              {result.risk_score && (
+                <div>
+                  <span className="font-medium text-gray-600">Risk Score:</span>
+                  <div className="text-gray-800">{result.risk_score}/4</div>
+                </div>
+              )}
+              {result.processing_time_ms && (
+                <div>
+                  <span className="font-medium text-gray-600">Processing:</span>
+                  <div className="text-gray-800">{result.processing_time_ms.toFixed(1)}ms</div>
+                </div>
+              )}
             </div>
-          )}
-          
-          {result.risk_level === 'high' && (
-            <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
-              <h4 className="font-semibold text-orange-800 mb-2">High Risk - Close Monitoring</h4>
-              <ul className="text-orange-700 text-sm space-y-1">
-                <li>• Enhanced monitoring protocols</li>
-                <li>• Consider early intervention</li>
-                <li>• Regular reassessment</li>
-                <li>• Prepare for potential escalation</li>
-              </ul>
-            </div>
-          )}
-          
-          {result.risk_level === 'moderate' && (
-            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <h4 className="font-semibold text-yellow-800 mb-2">Moderate Risk - Standard Care</h4>
-              <ul className="text-yellow-700 text-sm space-y-1">
-                <li>• Continue standard monitoring</li>
-                <li>• Regular vital sign checks</li>
-                <li>• Monitor for deterioration</li>
-                <li>• Follow institutional protocols</li>
-              </ul>
-            </div>
-          )}
-          
-          {result.risk_level === 'low' && (
-            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-              <h4 className="font-semibold text-green-800 mb-2">Low Risk - Routine Care</h4>
-              <ul className="text-green-700 text-sm space-y-1">
-                <li>• Routine monitoring sufficient</li>
-                <li>• Standard care protocols</li>
-                <li>• Continue current treatment</li>
-                <li>• Regular reassessment as scheduled</li>
-              </ul>
-            </div>
-          )}
-        </div>
+            {result.model_version && (
+              <div className="mt-2 text-xs text-gray-500">
+                Model: {result.model_version} • Timestamp: {result.timestamp ? new Date(result.timestamp).toLocaleString() : 'N/A'}
+              </div>
+            )}
+          </div>
+        )}
         
         <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
           <p className="text-blue-800 text-sm">
